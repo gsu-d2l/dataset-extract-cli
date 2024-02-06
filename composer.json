@@ -1,7 +1,7 @@
 {
-  "name": "mjfklib/console-template",
+  "name": "gsu-d2l/dataset-extract-cli",
   "license": "MIT",
-  "homepage": "https://github.com/mjfklib",
+  "homepage": "https://github.com/gsu-d2l",
   "require": {
     "php": "^8.1",
     "ext-dom": "*",
