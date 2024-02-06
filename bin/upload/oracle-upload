@@ -1,0 +1,54 @@
+#!/bin/bash
+
+BIN_DIR="$(realpath $(dirname ${0})/..)"
+source "${BIN_DIR}/.env" || exit 1
+if [ -n "${APP_ENV}" ]
+then
+  source "${BIN_DIR}/.env.${APP_ENV}" 2> /dev/null
+  source "${BIN_DIR}/.env.${APP_ENV}.local" 2> /dev/null
+fi
+
+USER_ID=${1}
+CTL_FILE=${2}
+DAT_FILE=${3}
+SQL_FILE=${4}
+OUT_FILE=${5}
+
+PIP_FILE="${DAT_FILE}.sqlldr.pip"
+LOG_FILE="${OUT_FILE}.sqlldr.log"
+BAD_FILE="${OUT_FILE}.sqlldr.bad"
+
+function cleanup()
+{
+  # Remove named pipe
+  rm -f "${PIP_FILE}"
+}
+
+trap cleanup EXIT
+
+# Clean up any files left over from a previous run
+rm -f "${OUT_FILE}*"
+
+# Create named pipe for uncompressed data file
+mknod "${PIP_FILE}" p
+gzip -cd "${DAT_FILE}" \
+  > "${PIP_FILE}" \
+  2> /dev/null \
+  &
+
+# Execute SQL*Loader
+sqlldr \
+  direct=true \
+  control="${CTL_FILE}" \
+  data="${PIP_FILE}" \
+  log="${LOG_FILE}" \
+  bad="${BAD_FILE}" \
+  discard=/dev/null \
+  errors=10000 \
+  date_cache=0 \
+  userid=${USER_ID}
+
+# Execute SQL file in SQL*Plus
+sqlplus ${USER_ID} @"${SQL_FILE}"
+
+exit 0

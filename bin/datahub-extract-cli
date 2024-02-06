@@ -1,0 +1,18 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+date_default_timezone_set('America/New_York');
+
+define("APP_DIR", __DIR__ . "/..");
+define("APP_NAMESPACE", "GSU\\D2L\\DataHub\\Extract");
+define("APP_NAME", "datahub-extract-cli");
+
+require_once APP_DIR . "/vendor/autoload.php";
+
+\mjfklib\Console\ApplicationInvoker::run(
+    appDir: APP_DIR,
+    appNamespace: APP_NAMESPACE,
+    appName: APP_NAME
+);

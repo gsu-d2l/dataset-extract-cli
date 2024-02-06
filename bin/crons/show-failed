@@ -1,0 +1,30 @@
+#!/bin/bash
+
+source "$(realpath $(dirname ${0})/.cron-init)"
+
+START_DATE="${1}"
+if [ -z "${START_DATE}" ]
+then
+  START_DATE=$(date +%Y%m%d)
+fi
+
+END_DATE="${2}"
+if [ -z "${END_DATE}" ]
+then
+  END_DATE=$(date +%Y%m%d)
+fi
+
+LIST_CMD="${CLI_CMD} extracts:list --start-date=${START_DATE} --end-date=${END_DATE}"
+
+echo "START_DATE=${START_DATE}"
+echo "END_DATE=${END_DATE}"
+echo ""
+
+echo "Datasets not uploaded:"
+comm -23 <(cat ${DATASETS_PATH} 2>&1 | sort) <(${LIST_CMD} --status=Uploaded --show-datasets-only 2>&1 | sort)
+
+echo ""
+echo "Extracts not uploaded:"
+${LIST_CMD} --status=Available --status=Downloaded --status=Processed 2>&1
+
+exit 0

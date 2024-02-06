@@ -1,0 +1,54 @@
+#!/bin/bash
+
+source "$(realpath $(dirname ${0})/.cron-init)"
+log "Started"
+
+prepare_locking
+exlock_now || (log "Another instance is running; Aborting" && exit 1)
+
+FORCE=""
+HC_PING_URL=""
+
+case "${1}" in
+  "--force" | "-f")
+    FORCE="--force"
+    ;;
+  *)
+    HC_PING_URL="${1}"
+    ;;
+esac
+
+CRONS_CMD="/usr/bin/env APP_ENV=${APP_ENV} ${CRONS_DIR}"
+RUN_ID=$(uuidgen)
+
+log "RUN_ID=${RUN_ID}"
+
+if [ -d "${LOG_DIR}" ]
+then
+  find "${LOG_DIR}" -name "*.log.gz" -type f -mtime +90 -delete
+  for LOG_FILE in $(find "${LOG_DIR}" -name "*.log" -type f -mtime +7)
+  do
+    gzip "${LOG_FILE}"
+  done
+fi
+
+if [ -n "${HC_PING_URL}" ]
+then
+  curl -s -m 10 --retry 5 "${HC_PING_URL}/start?rid=${RUN_ID}" > /dev/null 2>&1 || exit 1
+fi
+
+${CRONS_CMD}/fetch ${FORCE}
+${CRONS_CMD}/download ${FORCE}
+${CRONS_CMD}/build-fulldiff ${FORCE}
+${CRONS_CMD}/process ${FORCE}
+${CRONS_CMD}/upload ${FORCE}
+
+RUN_STATUS=$(${CRONS_CMD}/verify-run)
+log "RUN_STATUS=${RUN_STATUS}"
+
+if [ -n "${HC_PING_URL}" ]
+then
+  curl -s -m 10 --retry 5 "${HC_PING_URL}/${RUN_STATUS}?rid=${RUN_ID}" > /dev/null 2>&1
+fi
+
+exit 0

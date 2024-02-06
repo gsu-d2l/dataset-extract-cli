@@ -1,0 +1,58 @@
+#!/bin/bash
+
+source "$(realpath $(dirname ${0})/.cron-init)"
+log "Started"
+
+init_workers 4
+
+# Get extract list
+EXTRACT_INDEX=0
+EXTRACTS=($(${CLI_CMD} extracts:list --status=Downloaded))
+log "EXTRACT_COUNT=${#EXTRACTS[@]}"
+
+# For each extract
+while (( ${EXTRACT_INDEX} < ${#EXTRACTS[@]} ))
+do
+  # For each worker
+  for WORKER_ID in ${!WORKERS[@]};
+  do
+    # If there are no more extracts, then leave process loop
+    if (( ${EXTRACT_INDEX} >= ${#EXTRACTS[@]} ))
+    then
+      break 2
+    fi
+
+    # Check if worker is still busy. If not, execute the next item in the queue
+    kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
+    RETVAL=$?
+    if (( ${RETVAL} != 0 ))
+    then
+      EXTRACT=${EXTRACTS[${EXTRACT_INDEX}]}
+      if [ -n "${EXTRACT}" ]
+      then
+        if [ -n "${WORKERS[${WORKER_ID}]}" ]
+        then
+          log "EXTRACT=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+        fi
+
+        ${CLI_CMD} extracts:process $@ ${EXTRACT} &
+        WORKERS[${WORKER_ID}]=$!
+        WORKER_CONTEXT[${WORKER_ID}]=${EXTRACT}
+
+        log "EXTRACT=${EXTRACT}, PID=${WORKERS[${WORKER_ID}]} - Started"
+      fi
+
+      EXTRACT_INDEX=$((EXTRACT_INDEX + 1))
+    fi
+  done
+
+  # Sleep until the next iteration
+  sleep 0.5
+done
+
+# Wait for any remaining workers to finish
+log "Waiting for remaining workers to finish"
+wait
+
+log "Finished"
+exit 0

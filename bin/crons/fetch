@@ -1,0 +1,10 @@
+#!/bin/bash
+
+source "$(realpath $(dirname ${0})/.cron-init)"
+log "Started"
+
+cat "${DATASETS_PATH}" 2>/dev/null | xargs ${CLI_CMD} extracts:fetch $@
+
+log "Finished"
+
+exit 0

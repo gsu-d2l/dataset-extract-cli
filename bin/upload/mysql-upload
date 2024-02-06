@@ -1,0 +1,23 @@
+#!/bin/bash
+
+BIN_DIR="$(realpath $(dirname ${0})/..)"
+source "${BIN_DIR}/.env" || exit 1
+if [ -n "${APP_ENV}" ]
+then
+  source "${BIN_DIR}/.env.${APP_ENV}" 2> /dev/null
+  source "${BIN_DIR}/.env.${APP_ENV}.local" 2> /dev/null
+fi
+
+SQL_FILE=${1}
+DB_NAME=${2}
+MYSQL_OPTIONS=${3}
+RETURN_CODE=0
+
+# Pipe uncompressed SQL file into MySQL. Credentials are set in ~/.my.cnf
+gzip -cd "${SQL_FILE}" | mysql ${MYSQL_OPTIONS} ${DB_NAME}
+if [ "${PIPESTATUS[1]}${PIPESTATUS[2]}" -ne "00" ]
+then
+  exit 1
+fi
+
+exit 0

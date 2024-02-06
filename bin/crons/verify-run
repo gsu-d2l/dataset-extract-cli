@@ -1,0 +1,35 @@
+#!/bin/bash
+
+source "$(realpath $(dirname ${0})/.cron-init)"
+
+START_DATE=$(date +%Y%m%d)
+
+DATASETS_COUNT=$( \
+comm -23 \
+  <(cat ${DATASETS_PATH} 2>&1 | sort) \
+  <(${CLI_CMD} extracts:list --start-date=${START_DATE} --show-datasets-only 2>&1 | sort) \
+  2> /dev/null \
+  | wc -l \
+)
+if [ "${DATASETS_COUNT}" -ne "0" ]
+then
+  echo "1"
+  exit 1
+fi
+
+EXTRACT_COUNT=$( \
+${CLI_CMD} \
+  extracts:list \
+  --status=Available \
+  --status=Downloaded \
+  --status=Processed 2>&1 \
+  | wc -l \
+)
+if [ "${EXTRACT_COUNT}" -ne "0" ]
+then
+  echo "1"
+  exit 1
+fi
+
+echo "0"
+exit 0

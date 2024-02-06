@@ -1,0 +1,6 @@
+*
+!auth/
+!extracts/
+!.gitignore
+!datasets.example.txt
+!datasets.all.txt

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+BIN_DIR="$(realpath $(dirname ${0})/..)"
+source "${BIN_DIR}/.env" || exit 1
+if [ -n "${APP_ENV}" ]
+then
+  source "${BIN_DIR}/.env.${APP_ENV}" 2> /dev/null
+  source "${BIN_DIR}/.env.${APP_ENV}.local" 2> /dev/null
+fi
+
+/usr/bin/sort \
+  --temporary-directory=${1} \
+  --merge ${2}.* \
+  | /usr/bin/zip -q ${2} -
+
+/usr/bin/rm -f ${2}.*

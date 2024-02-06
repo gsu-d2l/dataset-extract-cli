@@ -1,0 +1,58 @@
+#!/bin/bash
+
+source "$(realpath $(dirname ${0})/.cron-init)"
+log "Started"
+
+init_workers 4
+
+# Get dataset list
+DATASET_INDEX=0
+DATASETS=($(${CLI_CMD} extracts:list --status=Processed --show-datasets-only))
+log "DATASET_COUNT=${#DATASETS[@]}"
+
+# For each extract
+while (( ${DATASET_INDEX} < ${#DATASETS[@]} ))
+do
+  # For each worker
+  for WORKER_ID in ${!WORKERS[@]};
+  do
+    # If there are no more extracts, then leave process loop
+    if (( ${DATASET_INDEX} >= ${#DATASETS[@]} ))
+    then
+      break 2
+    fi
+
+    # Check if worker is still busy. If not, execute the next item in the queue
+    kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
+    RETVAL=$?
+    if (( ${RETVAL} != 0 ))
+    then
+      DATASET=${DATASETS[${DATASET_INDEX}]}
+      if [ -n "${DATASET}" ]
+      then
+        if [ -n "${WORKERS[${WORKER_ID}]}" ]
+        then
+          log "DATASET=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+        fi
+
+        ${CLI_CMD} extracts:upload $@ ${DATASET} &
+        WORKERS[${WORKER_ID}]=$!
+        WORKER_CONTEXT[${WORKER_ID}]=${DATASET}
+
+        log "DATASET=${DATASET}, PID=${WORKERS[${WORKER_ID}]} - Started"
+      fi
+
+      DATASET_INDEX=$((DATASET_INDEX + 1))
+    fi
+  done
+
+  # Sleep for a few seconds until the next iteration
+  sleep 0.5
+done
+
+# Wait for any remaining workers to finish
+log "Waiting for remaining workers to finish"
+wait
+
+log "Finished"
+exit 0

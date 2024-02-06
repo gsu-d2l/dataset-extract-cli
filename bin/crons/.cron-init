@@ -1,0 +1,96 @@
+#!/bin/bash
+
+
+##### Set defaults
+
+if [ -z "${APP_ENV}" ]
+then
+  APP_ENV="dev"
+fi
+APP_DIR="$(realpath $(dirname ${0})/../../)"
+APP_NAME="$(basename ${0})"
+LOCK_FILE="/tmp/${APP_NAME}"
+LOCK_FD=100
+
+
+###### Load .env files #####
+
+source "${APP_DIR}/.env" || exit 1
+source "${APP_DIR}/.env.${APP_ENV}" 2> /dev/null
+source "${APP_DIR}/.env.${APP_ENV}.local" 2> /dev/null
+source "${BIN_DIR}/.env" || exit 1
+source "${BIN_DIR}/.env.${APP_ENV}" 2> /dev/null
+source "${BIN_DIR}/.env.${APP_ENV}.local" 2> /dev/null
+
+
+###### Validate #####
+
+if [ ! -f "${BIN_DIR}/datahub-extract-cli" ]
+then
+  echo echo "Missing: ${BIN_DIR}/datahub-extract-cli"
+  exit 1
+fi
+
+
+##### Init #####
+
+CLI_CMD="/usr/bin/env APP_ENV=${APP_ENV} ${BIN_DIR}/datahub-extract-cli"
+LIST_CMD="${CLI_CMD} extracts:list"
+WORKERS=()
+WORKER_CONTEXT=()
+
+cd "${APP_DIR}"
+
+
+##### Functions #####
+
+function log() {
+  echo "[$(date +%Y-%m-%dT%H:%M:%S.%N%:z)][${APP_ENV}][${APP_NAME}][$$]: ${1}"
+}
+
+function _lock() {
+  flock -$1 ${LOCK_FD};
+}
+
+function exlock_now() {
+  _lock xn;
+}
+
+function _no_more_locking() {
+  _lock u
+  _lock xn && rm -f ${LOCK_FILE}
+}
+
+function prepare_locking() {
+    eval "exec ${LOCK_FD}>\"${LOCK_FILE}\""
+    trap _no_more_locking EXIT
+}
+
+function cleanup_workers() {
+  for i in ${!WORKERS[@]};
+  do
+    if [ -n "${WORKERS[$i]}" ]
+    then
+      kill ${WORKERS[$i]} >/dev/null 2>&1
+    fi
+  done
+}
+
+function init_workers() {
+  if [ -n "${1}" ]
+  then
+    WORKERS=()
+    while (( ${#WORKERS[@]} < ${1} ))
+    do
+      WORKERS+=("")
+    done
+
+    WORKER_CONTEXT=()
+    while (( ${#WORKER_CONTEXT[@]} < ${1} ))
+    do
+      WORKER_CONTEXT+=("")
+    done
+
+    trap cleanup_workers EXIT
+  fi
+}

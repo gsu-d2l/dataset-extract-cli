@@ -1,0 +1,14 @@
+#!/bin/bash
+
+BIN_DIR="$(realpath $(dirname ${0})/..)"
+source "${BIN_DIR}/.env" || exit 1
+if [ -n "${APP_ENV}" ]
+then
+  source "${BIN_DIR}/.env.${APP_ENV}" 2> /dev/null
+  source "${BIN_DIR}/.env.${APP_ENV}.local" 2> /dev/null
+fi
+
+/usr/bin/comm -23 \
+  <(/usr/bin/unzip -p ${1}) \
+  <(/usr/bin/unzip -p ${2}) \
+  | /usr/bin/zip -q ${3} -
