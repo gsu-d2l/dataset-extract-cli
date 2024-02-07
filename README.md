@@ -27,9 +27,9 @@ cp bin/.env.example bin/.env
 vim bin/.env
 ```
 
-Create a `work/datasets.txt` file to specify what datasets to process. See `work/datasets.example.txt` for an example and `work/datasets.all.txt` for the full list.
+Create a `work/datasets/datasets.txt` file to specify what datasets to process. See `work/datasets.example.txt` for an example and `work/datasets.all.txt` for the full list.
 ```sh
-cp work/datasets.all.txt work/datasets.txt
+cp work/datasets/datasets.all.txt work/datasets/datasets.txt
 vim work/datasets.txt
 ```
 
