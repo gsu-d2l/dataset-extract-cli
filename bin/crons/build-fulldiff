@@ -51,8 +51,26 @@ do
 done
 
 # Wait for any remaining workers to finish
-log "Waiting for remaining workers to finish"
-wait
+log "Reached end of queue; Waiting for remaining workers to finish"
+FINISHED=0
+while (( ${FINISHED} < ${#EXTRACTS[@]} ))
+do
+  for WORKER_ID in ${!WORKERS[@]};
+  do
+    kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
+    if (( ${RETVAL} != 0 ))
+    then
+      if [ -n "${WORKERS[${WORKER_ID}]}" ]
+      then
+        log "EXTRACT=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+      fi
+
+      FINISHED=$((FINISHED + 1))
+    fi
+  done
+
+  sleep 0.5
+done
 
 log "Finished"
 exit 0
