@@ -24,7 +24,12 @@ final class ShellCommand implements ShellCommandInterface
     {
         $cmdPath = realpath("{$this->config->binDir}/{$cmd}");
         return is_string($cmdPath)
-            ? $cmdPath
+            ? sprintf(
+                "/usr/bin/env APP_ENV=%s BIN_DIR=%s %s",
+                escapeshellarg($this->config->appEnv),
+                escapeshellarg($this->config->binDir),
+                $cmdPath
+            )
             : throw new FileNotFoundException("{$this->config->binDir}/{$cmd}");
     }
 

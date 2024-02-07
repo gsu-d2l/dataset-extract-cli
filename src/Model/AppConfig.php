@@ -19,6 +19,7 @@ final class AppConfig
 
 
     /**
+     * @param string $appEnv
      * @param string $binDir
      * @param string $availableDir
      * @param string $downloadDir
@@ -29,6 +30,7 @@ final class AppConfig
      * @param string|ExtractProcessType $processType
      */
     public function __construct(
+        public string $appEnv,
         string $binDir,
         string $availableDir,
         string $downloadDir,

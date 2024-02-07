@@ -1,6 +1,5 @@
 #!/bin/bash
 
-BIN_DIR="$(realpath $(dirname ${0})/..)"
 source "${BIN_DIR}/.env" || exit 1
 if [ -n "${APP_ENV}" ]
 then

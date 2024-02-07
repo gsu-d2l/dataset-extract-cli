@@ -18,6 +18,7 @@ final class AppConfigFactory
     {
         $values = ArrayValue::convertToArray($env->getArrayCopy());
         return new AppConfig(
+            appEnv: $env->appEnv,
             binDir: ArrayValue::getString($values, ['binDir', 'BIN_DIR']),
             availableDir: ArrayValue::getString($values, ['availableDir', 'AVAILABLE_DIR']),
             downloadDir: ArrayValue::getString($values, ['downloadDir', 'DOWNLOAD_DIR']),
