@@ -6,6 +6,7 @@ namespace GSU\D2L\DataHub\Extract\BuildFullDiff;
 
 use GSU\D2L\DataHub\Extract\Logger\ProgressLoggerInterface;
 use GSU\D2L\DataHub\Extract\Logger\ProgressLoggerTrait;
+use GSU\D2L\DataHub\Extract\Model\ExtractStatus;
 use GSU\D2L\DataHub\Extract\Model\ExtractType;
 use GSU\D2L\DataHub\Extract\Repository\ExtractRepositoryInterface;
 use mjfklib\Console\Command\Command;
@@ -47,10 +48,10 @@ final class BuildFullDiffCommand extends Command implements ProgressLoggerInterf
             name: 'force',
             shortcut: 'f',
             mode: InputOption::VALUE_NONE,
-            description: "Force index generation of extract"
+            description: "Force fulldiff generation of dataset"
         );
 
-        $this->addArgument('extract', InputArgument::REQUIRED);
+        $this->addArgument('dataset', InputArgument::REQUIRED);
     }
 
 
@@ -61,26 +62,31 @@ final class BuildFullDiffCommand extends Command implements ProgressLoggerInterf
         InputInterface $input,
         OutputInterface $output
     ): int {
-        /** @var string $extractName */
-        $extractName = $input->getArgument('extract');
+        /** @var string $dataset */
+        $dataset = $input->getArgument('dataset');
         $force = $input->getOption('force') === true;
-        $extract = $this->extractRepo->getExtract($extractName);
 
-        if (
-            $extract->type === ExtractType::FULL
-            && $extract->downloadPath->exists()
-            && ($force || !$extract->fullDiffPath->exists())
-        ) {
-            $bytes = $this->fullDiffBuilder->buildFullDiff(
-                $extract,
-                $force
-            );
+        $extracts = $this->extractRepo->getExtracts(
+            datasets: $dataset,
+            types: [ExtractType::FULL],
+            status: $force
+                ? [ExtractStatus::DOWNLOADED, ExtractStatus::PROCESSED, ExtractStatus::UPLOADED]
+                : [ExtractStatus::DOWNLOADED]
+        );
 
-            if ($bytes > 0) {
-                $this->logger?->info('(fulldiff) ' . $this->formatLogResults([
-                    'extract' => $extract->extractName,
-                    'bytes' => $bytes
-                ]));
+        foreach ($extracts as $extract) {
+            if ($extract->downloadPath->exists() && ($force || !$extract->fullDiffPath->exists())) {
+                $bytes = $this->fullDiffBuilder->buildFullDiff(
+                    $extract,
+                    $force
+                );
+
+                if ($bytes > 0) {
+                    $this->logger?->info('(fulldiff) ' . $this->formatLogResults([
+                        'extract' => $extract->extractName,
+                        'bytes' => $bytes
+                    ]));
+                }
             }
         }
 

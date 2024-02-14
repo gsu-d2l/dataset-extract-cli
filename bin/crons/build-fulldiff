@@ -5,19 +5,20 @@ log "Started"
 
 init_workers 4
 
-# Get extract list
-EXTRACT_INDEX=0
-EXTRACTS=($(${CLI_CMD} extracts:list --status=Downloaded --type=Full))
-log "EXTRACT_COUNT=${#EXTRACTS[@]}"
+# Get dataset list
+FINISHED=0
+DATASET_INDEX=0
+DATASETS=($(${CLI_CMD} extracts:list --status=Downloaded --type=Full --show-datasets-only))
+log "DATASET_COUNT=${#DATASETS[@]}"
 
-# For each extract
-while (( ${EXTRACT_INDEX} < ${#EXTRACTS[@]} ))
+# For each dataset
+while (( ${DATASET_INDEX} < ${#DATASETS[@]} ))
 do
   # For each worker
   for WORKER_ID in ${!WORKERS[@]};
   do
-    # If there are no more extracts, then leave process loop
-    if (( ${EXTRACT_INDEX} >= ${#EXTRACTS[@]} ))
+    # If there are no more datasets, then leave process loop
+    if (( ${DATASET_INDEX} >= ${#DATASETS[@]} ))
     then
       break 2
     fi
@@ -27,22 +28,23 @@ do
     RETVAL=$?
     if (( ${RETVAL} != 0 ))
     then
-      EXTRACT=${EXTRACTS[${EXTRACT_INDEX}]}
-      if [ -n "${EXTRACT}" ]
+      DATASET=${DATASETS[${DATASET_INDEX}]}
+      if [ -n "${DATASET}" ]
       then
         if [ -n "${WORKERS[${WORKER_ID}]}" ]
         then
-          log "EXTRACT=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+          log "DATASET=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+          FINISHED=$((FINISHED + 1))
         fi
 
-        ${CLI_CMD} extracts:build-fulldiff $@ ${EXTRACT} &
+        ${CLI_CMD} extracts:build-fulldiff $@ ${DATASET} &
         WORKERS[${WORKER_ID}]=$!
-        WORKER_CONTEXT[${WORKER_ID}]=${EXTRACT}
+        WORKER_CONTEXT[${WORKER_ID}]=${DATASET}
 
-        log "EXTRACT=${EXTRACT}, PID=${WORKERS[${WORKER_ID}]} - Started"
+        log "DATASET=${DATASET}, PID=${WORKERS[${WORKER_ID}]} - Started"
       fi
 
-      EXTRACT_INDEX=$((EXTRACT_INDEX + 1))
+      DATASET_INDEX=$((DATASET_INDEX + 1))
     fi
   done
 
@@ -52,20 +54,20 @@ done
 
 # Wait for any remaining workers to finish
 log "Reached end of queue; Waiting for remaining workers to finish"
-FINISHED=0
-while (( ${FINISHED} < ${#EXTRACTS[@]} ))
+while (( ${FINISHED} < ${#DATASETS[@]} ))
 do
   for WORKER_ID in ${!WORKERS[@]};
   do
-    kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
-    if (( ${RETVAL} != 0 ))
+    if [ -n "${WORKERS[${WORKER_ID}]}" ]
     then
-      if [ -n "${WORKERS[${WORKER_ID}]}" ]
+      kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
+      RETVAL=$?
+      if (( ${RETVAL} != 0 ))
       then
-        log "EXTRACT=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+        log "DATASET=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+        WORKERS[${WORKER_ID}]=""
+        FINISHED=$((FINISHED + 1))
       fi
-
-      FINISHED=$((FINISHED + 1))
     fi
   done
 
