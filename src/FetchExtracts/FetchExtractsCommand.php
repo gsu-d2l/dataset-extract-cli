@@ -61,7 +61,6 @@ final class FetchExtractsCommand extends Command
 
         list(
             $available,
-            $skipped,
             $errors
         ) = $this->getAvailableExtracts(
             $input,
@@ -80,7 +79,6 @@ final class FetchExtractsCommand extends Command
 
         $this->logger?->info('(fetch) ' . $this->formatLogResults([
             'availabe' => count($available),
-            'skipped'  => $skipped,
             'errors'   => $errors,
             'stored'   => $stored,
             'deleted'  => $deleted
@@ -93,23 +91,16 @@ final class FetchExtractsCommand extends Command
     /**
      * @param InputInterface $input
      * @param string[] $datasets
-     * @return array{0:ExtractInfo[],1:int,2:int}
+     * @return array{0:ExtractInfo[],1:int}
      */
     private function getAvailableExtracts(
         InputInterface $input,
         array $datasets
     ): array {
-        $datasets = array_map(
-            fn (string $datasetName): string => strtoupper(DatasetSchema::getName($datasetName)),
-            $datasets
-        );
-
         $available = array_map(
-            function (ExtractBaseInfo $extract) use ($input, $datasets): ExtractInfo|null|false {
+            function (ExtractBaseInfo $extract) use ($input): ExtractInfo|false {
                 try {
-                    return in_array(strtoupper($extract->datasetName), $datasets, true)
-                        ? $this->extractRepo->createExtract($extract)
-                        : null;
+                    return $this->extractRepo->createExtract($extract);
                 } catch (\Throwable $t) {
                     $this->logError(
                         $input,
@@ -122,12 +113,11 @@ final class FetchExtractsCommand extends Command
                     return false;
                 }
             },
-            $this->availableExtractsRepo->getAvailableExtract(),
+            $this->availableExtractsRepo->getAvailableExtract($datasets),
         );
 
         return [
             array_filter($available, fn($e) => $e instanceof ExtractInfo),
-            count(array_filter($available, fn($e) => $e === null)),
             count(array_filter($available, fn($e) => $e === false))
         ];
     }

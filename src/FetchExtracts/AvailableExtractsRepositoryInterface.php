@@ -9,7 +9,8 @@ use GSU\D2L\DataHub\Extract\Model\ExtractBaseInfo;
 interface AvailableExtractsRepositoryInterface
 {
     /**
+     * @param string[] $datasets
      * @return ExtractBaseInfo[]
      */
-    public function getAvailableExtract(): array;
+    public function getAvailableExtract(array $datasets): array;
 }
