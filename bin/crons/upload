@@ -6,6 +6,7 @@ log "Started"
 init_workers 4
 
 # Get dataset list
+FINISHED=0
 DATASET_INDEX=0
 DATASETS=($(${CLI_CMD} extracts:list --status=Processed --show-datasets-only))
 log "DATASET_COUNT=${#DATASETS[@]}"
@@ -33,6 +34,7 @@ do
         if [ -n "${WORKERS[${WORKER_ID}]}" ]
         then
           log "DATASET=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+          FINISHED=$((FINISHED + 1))
         fi
 
         ${CLI_CMD} extracts:upload $@ ${DATASET} &
@@ -52,20 +54,20 @@ done
 
 # Wait for any remaining workers to finish
 log "Reached end of queue; Waiting for remaining workers to finish"
-FINISHED=0
-while (( ${FINISHED} < ${#EXTRACTS[@]} ))
+while (( ${FINISHED} < ${#DATASETS[@]} ))
 do
   for WORKER_ID in ${!WORKERS[@]};
   do
-    kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
-    if (( ${RETVAL} != 0 ))
+    if [ -n "${WORKERS[${WORKER_ID}]}" ]
     then
-      if [ -n "${WORKERS[${WORKER_ID}]}" ]
+      kill -0 "${WORKERS[${WORKER_ID}]}" >/dev/null 2>&1
+      RETVAL=$?
+      if (( ${RETVAL} != 0 ))
       then
         log "DATASET=${WORKER_CONTEXT[${WORKER_ID}]}, PID=${WORKERS[${WORKER_ID}]} - Finished"
+        WORKERS[${WORKER_ID}]=""
+        FINISHED=$((FINISHED + 1))
       fi
-
-      FINISHED=$((FINISHED + 1))
     fi
   done
 
