@@ -153,7 +153,7 @@ final class IndexBuilder implements IndexBuilderInterface
 
         // Write buffer to disk
         if (count($chunk) > 0) {
-            ksort($chunk, SORT_STRING);
+            ksort($chunk, SORT_LOCALE_STRING);
 
             try {
                 $out = FileMethods::openFile(
