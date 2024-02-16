@@ -132,10 +132,4 @@ interface ExtractRepositoryInterface
      * @return int
      */
     public function deleteExtracts(ExtractInfo|array $extracts): int;
-
-
-    /**
-     * @return void
-     */
-    public function cleanUp(): void;
 }

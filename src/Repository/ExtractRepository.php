@@ -246,9 +246,7 @@ final class ExtractRepository implements ExtractRepositoryInterface, LoggerAware
 
 
     /**
-     * @param ExtractInfo|ExtractInfo[] $extracts
-     * @param bool $force
-     * @return int
+     * @inheritdoc
      */
     public function storeExtracts(
         ExtractInfo|array $extracts,
@@ -299,8 +297,7 @@ final class ExtractRepository implements ExtractRepositoryInterface, LoggerAware
 
 
     /**
-     * @param ExtractInfo|ExtractInfo[] $extracts
-     * @return int
+     * @inheritdoc
      */
     public function deleteExtracts(ExtractInfo|array $extracts): int
     {
@@ -310,68 +307,43 @@ final class ExtractRepository implements ExtractRepositoryInterface, LoggerAware
 
         $deleted = 0;
         foreach ($extracts as $extract) {
-            if ($extract->extractPath->exists()) {
-                try {
-                    FileMethods::deleteFiles(sprintf(
-                        "%s/%s*",
-                        dirname($extract->extractPath->getPath()),
-                        $extract->extractName
-                    ));
-                } catch (\Throwable $t) {
-                    throw new DeleteExtractException($extract, $t);
-                }
-            }
+            try {
+                $this->deleteExtractPath($extract, $extract->extractPath);
+                $this->deleteExtractPath($extract, $extract->downloadPath);
+                $this->deleteExtractPath($extract, $extract->indexPath);
+                $this->deleteExtractPath($extract, $extract->fullDiffPath);
+                $this->deleteExtractPath($extract, $extract->processPath);
+                $this->deleteExtractPath($extract, $extract->uploadPath);
 
-            if ($extract->extractPath->exists()) {
-                throw new DeleteExtractException($extract);
+                $deleted++;
+            } catch (\Throwable $t) {
+                throw new DeleteExtractException($extract, $t);
             }
-
-            $deleted++;
         }
-
-        $this->cleanUp();
 
         return $deleted;
     }
 
 
     /**
+     * @param ExtractInfo $extract
+     * @param ExtractPath $path
      * @return void
      */
-    public function cleanUp(): void
-    {
-        /** @var string[] $extracts */
-        $extracts = array_filter(
-            array_unique(array_map(
-                fn (string $f): string => explode(".", $f)[0],
-                array_values(array_merge(
-                    FileMethods::getFiles($this->config->availableDir),
-                    FileMethods::getFiles($this->config->downloadDir),
-                    FileMethods::getFiles($this->config->indexDir),
-                    FileMethods::getFiles($this->config->fullDiffDir),
-                    FileMethods::getFiles($this->config->processDir),
-                    FileMethods::getFiles($this->config->uploadDir)
-                ))
-            )),
-            fn (string $f): bool => ExtractInfo::isExtractName($f)
-        );
+    private function deleteExtractPath(
+        ExtractInfo $extract,
+        ExtractPath $path
+    ): void {
+        if ($path->exists()) {
+            FileMethods::deleteFiles(sprintf(
+                "%s/%s.*",
+                dirname($path->getPath()),
+                $extract->extractName
+            ));
+        }
 
-        /** @var string[] $orphans */
-        $orphans = array_diff(
-            $extracts,
-            array_map(
-                fn (ExtractInfo $e) => $e->extractName,
-                $this->getExtracts()
-            )
-        );
-
-        foreach ($orphans as $extractName) {
-            FileMethods::deleteFiles("{$this->config->availableDir}/{$extractName}*");
-            FileMethods::deleteFiles("{$this->config->downloadDir}/{$extractName}*");
-            FileMethods::deleteFiles("{$this->config->indexDir}/{$extractName}*");
-            FileMethods::deleteFiles("{$this->config->fullDiffDir}/{$extractName}*");
-            FileMethods::deleteFiles("{$this->config->processDir}/{$extractName}*");
-            FileMethods::deleteFiles("{$this->config->uploadDir}/{$extractName}*");
+        if ($path->exists()) {
+            throw new \RuntimeException("Path still exists: {$path->__toString()}");
         }
     }
 }

@@ -93,8 +93,6 @@ final class DeleteExtractsCommand extends Command
             )
         );
 
-        $this->extractRepo->cleanUp();
-
         return static::SUCCESS;
     }
 }
